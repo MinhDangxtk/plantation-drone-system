@@ -1,0 +1,5 @@
+{
+    "OilPalm": {"drone_freq": "Daily", "car_freq": "Weekly"},
+    "TeakTree": {"drone_freq": "Weekly", "car_freq": "Monthly"},
+    "Durian": {"drone_freq": "Daily", "car_freq": "Bi-Weekly"}
+}
