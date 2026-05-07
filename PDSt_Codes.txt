@@ -1,0 +1,22 @@
+PDSt Codes (Plantation Drone Status)
+
+Code     Meaning                  Can Proceed?   Category              Description
+--------------------------------------------------------------------------------------------
+PDSt01   All Systems Clear         Yes           Success               Mission is safe to proceed
+PDSt05   Low Battery               No            Mechanical Guard      Critical battery level - Abort
+PDSt07   Moderate Wind             Yes (Caution) Weather Guard         Adaptive mission mode recommended
+PDSt09   High Wind                 No            Weather Guard         Dangerous wind speed - Abort
+PDSt11   Biodiversity Alert        No            Restoration Ecology   Potential impact on wildlife / buffer zone - Manual review required
+PDSt99   System / API Error        No            System Error          Weather, GBIF, or other API failure
+
+
+Planned / Suggested Future PDSt Codes
+
+Code     Meaning                  Can Proceed?   Category              Description
+--------------------------------------------------------------------------------------------
+PDSt13   Low Soil Energy Index     Caution       Soil & Nutrient Mgmt  Poor microbial activity - Delay nutrient application
+PDSt15   Nutrient Outlier Detected Caution       Data Quality Guard    Extreme reading - Needs verification
+PDSt17   Ground Car Inspection Req No (Pause)    Anomaly Handling      Anomaly confirmed - Dispatch ground car
+PDSt21   Manual Cleanup Recommended No           Mitigation            Animal corpse / debris found - Manual labor needed
+PDSt88   Mission Completed Success -            Mission Status        Full mission finished
+PDSt98   Partial Mission (Data Synced) -         Mission Status        Mission done but with warnings
