@@ -1,93 +1,50 @@
 # main.py
-"""
-Plantation Intelligent Monitoring System
-Main Orchestrator
-"""
-
+from safety_checker import check_drone_mission
 from drone_controller import PlantationDrone
 from ground_car_controller import GroundChargerCar
-from safety_checker import check_drone_mission
-from soil_analysis import (
-    get_soil_energy_index, 
-    calculate_recovery_protocol, 
-    record_treatment
-)
+from soil_analysis import get_soil_energy_index
 
 def main():
-    print("="*75)
-    print("🌱 PLANTATION INTELLIGENT MONITORING SYSTEM")
-    print("="*75 + "\n")
-
-    # Initialize agents
+    print("=== Plantation Drone + Ground Car System ===\n")
+    
     drone = PlantationDrone("DRONE-01")
-    car = GroundChargerCar("CAR-01")
+    ground_car = GroundChargerCar("CAR-01")
+    
+    lat, lon = 1.35, 103.8   # Change to your test coordinates
+    battery = 88
+    zone_id = "Zone A"
 
-    # Mission parameters
-    lat = 1.3521
-    lon = 103.8198
-    zone_id = "Zone_B"
-    battery = 78
-
-    print(f"📍 Mission Target → Zone: {zone_id} | Location: {lat:.4f}, {lon:.4f}\n")
-
-    # ====================== 1. SAFETY LAYER ======================
-    print("🔒 1. SAFETY LAYER (Pre-flight Check)")
-    safety_code, can_proceed, safety_msg = check_drone_mission(lat, lon, battery)
-    print(f"   → {safety_code} | {safety_msg}\n")
+    # 1. Safety Check
+    code, can_proceed, msg = check_drone_mission(lat, lon, battery)
+    print(f"[{code}] {msg}\n")
 
     if not can_proceed:
-        print("❌ Mission aborted due to safety constraints.")
+        print("Mission aborted.")
         return
 
-    # ====================== 2. SENSING LAYER (Drone) ======================
-    print("🚁 2. SENSING LAYER - Drone Operation")
-    
-    # Proper flow: Move first → Then sample
+    # 2. Move to location
     drone.move_to_coordinate(lat, lon)
-    
-    # Take primary reading
-    primary_reading = drone.take_reading(zone_id)
-    
-    print(f"   Primary NPK Reading → N:{primary_reading['N']}, P:{primary_reading['P']}, K:{primary_reading['K']}\n")
 
-    # ====================== 3. VERIFICATION LAYER (Ground Car) ======================
-    print("🔍 3. VERIFICATION LAYER - Ground Car Deployed")
-    audit = car.perform_camera_inspection(lat, lon, zone_id)
-    print(f"   Visual Detection: {audit.get('visual_detection', 'Unknown')}\n")
+    # 3. Primary Reading
+    reading = drone.take_reading(zone_id)
 
-    # ====================== 4. INTELLIGENCE LAYER ======================
-    print("🧠 4. INTELLIGENCE LAYER - Recovery Protocol")
+    # 4. Outlier Detection + Spatial Check
+    if reading and reading["N"] > 80:   # Extreme outlier example
+        print(f"\n⚠️ High nutrient surge detected (N={reading['N']})! Running spatial check...")
+        drone.perform_spatial_check(zone_id)
+
+        print("\n🔍 Dispatching Ground Car for visual inspection...")
+        inspection = ground_car.inspect_anomaly(lat, lon, zone_id)
+        print(f"Ground Car Result: Needs manual cleanup = {inspection['needs_manual_cleanup']}")
+
+    # 5. Soil Energy Index (using last good reading)
     soil_data = get_soil_energy_index(lat, lon)
-    recovery = calculate_recovery_protocol(primary_reading, audit.get('visual_detection', 'unknown'))
+    print(f"\n🌱 Soil Energy Index: {soil_data.get('soil_energy_index', 'N/A')}/100")
 
-    if soil_data.get("status") == "success":
-        print(f"   Soil Energy Index : {soil_data['soil_energy_index']}/100 → {soil_data['interpretation']}")
+    # 6. Return & Sync
+    drone.return_and_sync()
 
-    print(f"   Priority          : {recovery['priority']}")
-    print(f"   Instruction       : {recovery['instruction']}")
-    print(f"   Recommended Dose  : {recovery['starter_dose']}\n")
-
-    # ====================== 5. EXECUTION LAYER - WORK ORDER ======================
-    print("📋 5. MANUAL INTERVENTION WORK ORDER (MIP)")
-    print("-" * 65)
-    print(f"Zone ID          : {zone_id}")
-    print(f"Location         : {lat:.4f}, {lon:.4f}")
-    print(f"Detected         : {audit.get('visual_detection', 'Unknown')}")
-    print(f"Instruction      : {recovery['instruction']}")
-    print(f"Starter Dose     : {recovery['starter_dose']}")
-    print("-" * 65)
-    print("👷 Human Specialist Required:")
-    print("   • Perform Scattering of organic clumps")
-    print("   • Apply neutralizer / starter dose as instructed")
-    print("   • Update system after completion")
-    print("-" * 65)
-
-    # Optional: Record treatment
-    print("\n💾 Recording treatment after manual work...")
-    print(record_treatment(zone_id, recovery['starter_dose']))
-
-    print("\n✅ Full Mission Cycle Completed!\n")
-
+    print("\n=== Mission Completed ===\n")
 
 if __name__ == "__main__":
     main()
