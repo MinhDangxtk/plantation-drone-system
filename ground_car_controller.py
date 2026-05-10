@@ -1,77 +1,61 @@
 # ground_car_controller.py
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 class GroundChargerCar:
     def __init__(self, car_id: str):
         self.id = car_id
-        self.state = "IDLE"
         self.battery = 100.0
-        self.current_zone = "BASE"
-        self.inspection_history = {}
+        self.state = "IDLE"
+        self.inspection_log: Dict = {}   # Store visual inspection results
 
-    def wireless_charge_sensor(self, node_id: str) -> bool:
-        """Job 1: Wireless inductive charging for low-capacity ground sensors"""
-        if self.battery < 5.0:
-            print(f"⚠️ [PDSt_LOW_CAR_BATTERY] Ground Car {self.id} battery too low to charge sensor.")
+    def charge_sensor_node(self, node_id: str) -> bool:
+        """Wireless charging for low-capacity ground soil sensors only"""
+        if self.battery < 3.0:
+            print(f"⚠️ [CAR_LOW_POWER] Ground Car {self.id} battery too low to charge sensor {node_id}")
             return False
 
-        self.state = "CHARGING"
-        print(f"⚡ [PDSt_CHARGE] Car {self.id}: Inductive charging started for Sensor Node '{node_id}'...")
-
-        # Simulate charging cost
-        self.battery -= 4.5
+        self.state = "CHARGING_NODE"
+        print(f"⚡ [WIRELESS_CHARGING] Charging Sensor Node '{node_id}'...")
+        self.battery -= 2.5
         self.state = "IDLE"
 
-        print(f"✅ [PDSt_CHARGE_COMPLETE] Sensor {node_id} charged. Car battery remaining: {self.battery:.1f}%")
+        print(f"✅ Sensor {node_id} successfully charged. Car battery: {self.battery:.1f}%")
         return True
 
-    def perform_camera_inspection(self, lat: float, lon: float, zone_id: str, suspected_issue: str = "high_nutrient_spike") -> Dict[str, Any]:
+    def inspect_anomaly(self, lat: float, lon: float, zone_id: str, suspected_issue: str = "high_nutrient_spike") -> Dict[str, Any]:
         """
-        Job 2: High-resolution camera inspection to verify anomalies detected by drone.
-        Used when PDSt11 (Biodiversity Alert) or nutrient outlier is flagged.
-        """
-        self.state = "AUDITING"
-        print(f"📸 [PDSt_AUDIT] Ground Car {self.id} performing camera inspection at {zone_id} ({lat:.4f}, {lon:.4f})")
-        print(f"   Suspected issue: {suspected_issue}")
-
-        # Simulate realistic computer vision detection (random but weighted)
-        possible_findings = [
-            "Normal_Soil",
-            "Organic_Debris",
-            "Fertilizer_Clump",
-            "Animal_Corpse",
-            "Weed_Infestation"
-        ]
+        Use camera to visually inspect the area and confirm whether the outlier 
+        is caused by contamination (e.g. dead animal, organic debris, etc.).
         
-        # Higher chance of finding something when called after anomaly
-        if suspected_issue == "high_nutrient_spike":
-            found = "Animal_Corpse" if hash(str(lat + lon)) % 3 == 0 else "Organic_Debris"
-        else:
-            found = possible_findings[hash(str(lat)) % len(possible_findings)]
+        Returns inspection result to help decide if manual labor is needed.
+        """
+        self.state = "INSPECTING"
+        print(f"📷 [CAMERA_INSPECTION] Ground Car {self.id} inspecting {zone_id} at ({lat:.4f}, {lon:.4f}) for {suspected_issue}...")
 
-        result = {
+        # Simulate camera-based detection (in reality: computer vision model)
+        inspection_result = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "car_id": self.id,
+            "source": "GroundCar_Camera",
             "zone_id": zone_id,
             "position": (round(lat, 6), round(lon, 6)),
             "suspected_issue": suspected_issue,
-            "visual_detection": found,
-            "confidence": round(0.75 + (0.2 * (hash(str(lat)) % 10) / 10), 2),
-            "action_required": "Manual_Labor_Cleaning" if found in ["Animal_Corpse", "Organic_Debris", "Fertilizer_Clump"] else "No_Action",
-            "recommendation": "Dispatch worker to remove debris and re-sample area" 
-                             if found in ["Animal_Corpse", "Organic_Debris"] else "Area appears clean - proceed with normal sampling",
-            "clean_data_recommended": True
+            "visual_findings": "organic_debris_detected",   # or "dead_animal", "normal", "fertilizer_clump"
+            "confidence": 0.87,
+            "needs_manual_cleanup": True,                   # Most important output
+            "recommended_action": "Dispatch manual labor to remove debris and re-sample",
+            "clean_reading_suggested": True
         }
 
-        # Save to history
+        # Log the inspection
         key = f"{lat:.5f}_{lon:.5f}"
-        self.inspection_history[key] = result
+        self.inspection_log[key] = inspection_result
 
         self.state = "IDLE"
-        print(f"📸 [PDSt_AUDIT_COMPLETE] Detection: {found} | Action: {result['action_required']}")
+        print(f"📸 [INSPECTION_COMPLETE] Visual findings: {inspection_result['visual_findings']}")
+        print(f"   → Needs manual cleanup: {inspection_result['needs_manual_cleanup']}")
         
-        return result
+        return inspection_result
 
     def get_battery_level(self) -> float:
         return round(self.battery, 1)
